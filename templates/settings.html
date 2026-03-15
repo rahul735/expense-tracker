@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings – Expense Tracker</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
+        h1, h2 { color: #333; }
+        nav { margin-bottom: 20px; }
+        nav a { color: #4CAF50; text-decoration: none; }
+        form { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        label { display: block; margin-top: 16px; font-weight: bold; color: #444; }
+        select, input[type=text], input[type=password] { width: 100%; padding: 10px; margin-top: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+        button { margin-top: 20px; padding: 10px 24px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        button:hover { background: #45a049; }
+        .hint { font-size: 12px; color: #888; margin-top: 4px; }
+        .saved-badge { display: inline-block; background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; border-radius: 4px; padding: 4px 10px; font-size: 13px; margin-top: 10px; }
+        .provider-info { background: #f9f9f9; border: 1px solid #eee; border-radius: 6px; padding: 12px 16px; margin-top: 10px; font-size: 13px; }
+        .provider-info a { color: #1565c0; }
+    </style>
+</head>
+<body>
+
+    <nav><a href="/">← Back to Expense Tracker</a></nav>
+    <h1>⚙️ Settings</h1>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="saved-badge">✅ {{ messages[0] }}</div>
+        {% endif %}
+    {% endwith %}
+
+    {% if has_key %}
+    <p class="saved-badge">✅ AI is configured (key: {{ masked_key }})</p>
+    {% endif %}
+
+    <form method="POST">
+        <label for="provider">AI Provider</label>
+        <select name="provider" id="provider" onchange="updateHint()">
+            <option value="gemini"  {% if provider == 'gemini'  %}selected{% endif %}>Google Gemini (has free tier)</option>
+            <option value="claude"  {% if provider == 'claude'  %}selected{% endif %}>Anthropic Claude</option>
+            <option value="openai"  {% if provider == 'openai'  %}selected{% endif %}>OpenAI (ChatGPT)</option>
+        </select>
+
+        <div class="provider-info" id="provider-info"></div>
+
+        <label for="api_key">API Key</label>
+        <input type="password" name="api_key" id="api_key" placeholder="Paste your API key here">
+        <p class="hint">Your key is stored locally in the app's database and never sent anywhere except the AI provider you choose.</p>
+
+        <button type="submit">Save Settings</button>
+    </form>
+
+<script>
+    const info = {
+        gemini: `<b>Google Gemini</b> — Free tier available (no credit card needed to start).<br>
+                 Get your key at: <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com/app/apikey</a><br>
+                 Install: <code>pip install google-generativeai</code>`,
+
+        claude: `<b>Anthropic Claude</b> — Paid, ~$0.000005 per expense (very cheap for personal use).<br>
+                 Get your key at: <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a><br>
+                 Install: <code>pip install anthropic</code>`,
+
+        openai: `<b>OpenAI (GPT-4o mini)</b> — Paid, similar pricing to Claude.<br>
+                 Get your key at: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a><br>
+                 Install: <code>pip install openai</code>`,
+    };
+
+    function updateHint() {
+        const val = document.getElementById('provider').value;
+        document.getElementById('provider-info').innerHTML = info[val];
+    }
+
+    // Show hint on page load
+    updateHint();
+</script>
+
+</body>
+</html>

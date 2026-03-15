@@ -7,16 +7,52 @@
     <style>
         body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
         h1, h2 { color: #333; }
-        form { background: white; padding: 20px; border-radius: 8px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        input, select { padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        nav { text-align: right; margin-bottom: 10px; }
+        nav a { color: #4CAF50; text-decoration: none; font-weight: bold; }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 0; margin-bottom: 0; }
+        .tab-btn { padding: 10px 24px; border: none; background: #ddd; cursor: pointer; font-size: 14px; border-radius: 6px 6px 0 0; }
+        .tab-btn.active { background: white; font-weight: bold; color: #4CAF50; }
+        .tab-content { display: none; background: white; padding: 20px; border-radius: 0 8px 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .tab-content.active { display: block; }
+
+        /* Forms */
+        input, select, textarea { padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        button { padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
         button:hover { background: #45a049; }
+        button:disabled { background: #aaa; cursor: not-allowed; }
+
+        /* Voice / Text AI section */
+        .ai-input-row { display: flex; gap: 8px; align-items: center; width: 100%; }
+        .ai-input-row textarea { flex: 1; resize: none; height: 44px; line-height: 1.4; }
+        #mic-btn { background: #fff; border: 2px solid #4CAF50; color: #4CAF50; font-size: 20px; padding: 6px 12px; }
+        #mic-btn.recording { background: #ff4444; border-color: #ff4444; color: white; }
+
+        /* AI Preview card */
+        #preview-card { display: none; background: #f0fff0; border: 1px solid #4CAF50; border-radius: 8px; padding: 16px; margin-top: 16px; }
+        #preview-card h4 { margin: 0 0 12px; color: #2e7d32; }
+        #preview-card input, #preview-card select { width: 180px; }
+        .preview-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+        .preview-row label { font-size: 12px; color: #666; display: block; margin-bottom: 2px; }
+        .preview-actions { margin-top: 12px; display: flex; gap: 8px; }
+        #confirm-btn { background: #2e7d32; }
+        #discard-btn { background: #e53935; }
+
+        #ai-error { color: #e53935; margin-top: 8px; font-size: 13px; display: none; }
+        #ai-status { color: #888; margin-top: 8px; font-size: 13px; display: none; }
+        .no-ai-notice { background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 10px 14px; font-size: 13px; margin-bottom: 10px; }
+        .no-ai-notice a { color: #856404; font-weight: bold; }
+
+        /* Table */
         table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         th { background: #4CAF50; color: white; padding: 12px; text-align: left; }
         td { padding: 10px 12px; border-bottom: 1px solid #eee; }
         tr:hover { background: #f9f9f9; }
         .delete { color: red; text-decoration: none; font-weight: bold; }
         .delete:hover { text-decoration: underline; }
+
+        /* Summary cards */
         .summary { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; }
         .summary-card { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); min-width: 150px; }
         .summary-card h4 { margin: 0 0 5px; color: #666; font-size: 12px; text-transform: uppercase; }
@@ -25,57 +61,116 @@
 </head>
 <body>
 
+    <nav><a href="/settings">⚙️ Settings</a></nav>
     <h1>💰 Expense Tracker</h1>
 
-    <!-- Add Expense Form -->
+    <!-- ── Input Tabs ── -->
     <h2>Add Expense</h2>
-    <form action="/add" method="POST">
-        <input type="date" name="date" required value="{{ today }}">
-        <select name="category" required>
-            <option value="">-- Category --</option>
-            <option>Food</option>
-            <option>Transport</option>
-            <option>Shopping</option>
-            <option>Entertainment</option>
-            <option>Health</option>
-            <option>Utilities</option>
-            <option>Other</option>
-        </select>
-        <input type="text" name="description" placeholder="Description">
-        <input type="number" name="amount" placeholder="Amount ($)" step="0.01" min="0" required>
-        <button type="submit">Add</button>
-    </form>
 
-    <!-- Monthly Summary -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('ai')">🤖 Voice / Text (AI)</button>
+        <button class="tab-btn" onclick="switchTab('manual')">✏️ Manual</button>
+    </div>
+
+    <!-- Tab 1: AI (Voice + Text) -->
+    <div id="tab-ai" class="tab-content active">
+
+        {% if not ai_configured %}
+        <div class="no-ai-notice">
+            ⚠️ AI is not configured yet. <a href="/settings">Go to Settings</a> to add your API key.
+            You can still use the Manual tab.
+        </div>
+        {% endif %}
+
+        <p style="color:#555; font-size:13px; margin-top:0;">
+            Type a sentence like <em>"spent 500 on lunch yesterday"</em> or click 🎤 to speak.
+        </p>
+
+        <div class="ai-input-row">
+            <textarea id="ai-text" placeholder="e.g. spent 800 rs on groceries today"></textarea>
+            <button id="mic-btn" title="Click to speak" onclick="toggleMic()">🎤</button>
+            <button id="parse-btn" onclick="parseExpense()" {% if not ai_configured %}disabled{% endif %}>Parse</button>
+        </div>
+
+        <div id="ai-status">⏳ Thinking...</div>
+        <div id="ai-error"></div>
+
+        <!-- Preview card shown after AI parses -->
+        <div id="preview-card">
+            <h4>✅ Review before saving</h4>
+            <div class="preview-row">
+                <div>
+                    <label>Date</label>
+                    <input type="date" id="p-date">
+                </div>
+                <div>
+                    <label>Category</label>
+                    <select id="p-category">
+                        <option>Food</option><option>Transport</option><option>Shopping</option>
+                        <option>Entertainment</option><option>Health</option><option>Utilities</option><option>Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Description</label>
+                    <input type="text" id="p-description" style="width:200px;">
+                </div>
+                <div>
+                    <label>Amount</label>
+                    <input type="number" id="p-amount" step="0.01" style="width:100px;">
+                </div>
+                <div>
+                    <label>Currency</label>
+                    <input type="text" id="p-currency" style="width:60px;" readonly>
+                </div>
+            </div>
+            <div class="preview-actions">
+                <button id="confirm-btn" onclick="confirmExpense()">💾 Save Expense</button>
+                <button id="discard-btn" onclick="discardPreview()">✕ Discard</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 2: Manual -->
+    <div id="tab-manual" class="tab-content">
+        <form action="/add" method="POST">
+            <input type="date" name="date" required value="{{ now }}">
+            <select name="category" required>
+                <option value="">-- Category --</option>
+                <option>Food</option><option>Transport</option><option>Shopping</option>
+                <option>Entertainment</option><option>Health</option><option>Utilities</option><option>Other</option>
+            </select>
+            <input type="text" name="description" placeholder="Description">
+            <input type="number" name="amount" placeholder="Amount" step="0.01" min="0" required>
+            <button type="submit">Add</button>
+        </form>
+    </div>
+
+    <!-- ── Monthly Summary ── -->
     {% if summary %}
     <h2>Monthly Summary</h2>
     <div class="summary">
         {% for row in summary %}
         <div class="summary-card">
             <h4>{{ row.month }} · {{ row.category }}</h4>
-            <p>${{ "%.2f"|format(row.total) }}</p>
+            <p>{{ row.total | round(2) }}</p>
         </div>
         {% endfor %}
     </div>
     {% endif %}
 
-    <!-- Expenses Table -->
+    <!-- ── Expenses Table ── -->
     <h2>All Expenses</h2>
     {% if expenses %}
     <table>
         <tr>
-            <th>Date</th>
-            <th>Category</th>
-            <th>Description</th>
-            <th>Amount</th>
-            <th>Action</th>
+            <th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Action</th>
         </tr>
         {% for e in expenses %}
         <tr>
             <td>{{ e.date }}</td>
             <td>{{ e.category }}</td>
             <td>{{ e.description }}</td>
-            <td>${{ "%.2f"|format(e.amount) }}</td>
+            <td>{{ e.amount }}</td>
             <td><a class="delete" href="/delete/{{ e.id }}">Delete</a></td>
         </tr>
         {% endfor %}
@@ -83,6 +178,140 @@
     {% else %}
     <p>No expenses yet. Add your first one above!</p>
     {% endif %}
+
+<script>
+    // ── Tab switching ──────────────────────────────────────────
+    function switchTab(name) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + name).classList.add('active');
+        event.target.classList.add('active');
+    }
+
+    // ── Voice input using Web Speech API ──────────────────────
+    let recognition = null;
+    let isRecording = false;
+
+    function toggleMic() {
+        if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+            alert("Your browser doesn't support voice input. Try Chrome.");
+            return;
+        }
+        if (isRecording) {
+            recognition.stop();
+            return;
+        }
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.lang = 'en-IN';  // Indian English, good for "rs", "rupees" etc.
+        recognition.interimResults = false;
+
+        recognition.onstart = () => {
+            isRecording = true;
+            document.getElementById('mic-btn').classList.add('recording');
+            document.getElementById('mic-btn').textContent = '⏹';
+        };
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            document.getElementById('ai-text').value = transcript;
+        };
+        recognition.onend = () => {
+            isRecording = false;
+            document.getElementById('mic-btn').classList.remove('recording');
+            document.getElementById('mic-btn').textContent = '🎤';
+        };
+        recognition.onerror = (e) => {
+            showError("Mic error: " + e.error);
+        };
+        recognition.start();
+    }
+
+    // ── Parse text with AI ─────────────────────────────────────
+    async function parseExpense() {
+        const text = document.getElementById('ai-text').value.trim();
+        if (!text) { showError("Please type or speak something first."); return; }
+
+        hideError();
+        showStatus("⏳ Thinking...");
+        document.getElementById('parse-btn').disabled = true;
+        document.getElementById('preview-card').style.display = 'none';
+
+        try {
+            const res = await fetch('/parse', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            const data = await res.json();
+
+            if (data.error) { showError(data.error); return; }
+
+            // Populate preview card
+            document.getElementById('p-date').value = data.date || today();
+            document.getElementById('p-category').value = data.category || 'Other';
+            document.getElementById('p-description').value = data.description || '';
+            document.getElementById('p-amount').value = data.amount || '';
+            document.getElementById('p-currency').value = data.currency || 'INR';
+            document.getElementById('preview-card').style.display = 'block';
+        } catch (e) {
+            showError("Network error: " + e.message);
+        } finally {
+            hideStatus();
+            document.getElementById('parse-btn').disabled = false;
+        }
+    }
+
+    // ── Confirm & save parsed expense ──────────────────────────
+    async function confirmExpense() {
+        const payload = {
+            date: document.getElementById('p-date').value,
+            category: document.getElementById('p-category').value,
+            description: document.getElementById('p-description').value,
+            amount: document.getElementById('p-amount').value,
+        };
+        try {
+            const res = await fetch('/add_parsed', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.location.reload();
+            } else {
+                showError(data.error);
+            }
+        } catch (e) {
+            showError("Failed to save: " + e.message);
+        }
+    }
+
+    function discardPreview() {
+        document.getElementById('preview-card').style.display = 'none';
+        document.getElementById('ai-text').value = '';
+    }
+
+    // ── Helpers ────────────────────────────────────────────────
+    function today() {
+        return new Date().toISOString().split('T')[0];
+    }
+    function showError(msg) {
+        const el = document.getElementById('ai-error');
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+    function hideError() {
+        document.getElementById('ai-error').style.display = 'none';
+    }
+    function showStatus(msg) {
+        const el = document.getElementById('ai-status');
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+    function hideStatus() {
+        document.getElementById('ai-status').style.display = 'none';
+    }
+</script>
 
 </body>
 </html>
