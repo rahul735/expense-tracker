@@ -21,6 +21,7 @@ def get_db():
 
 
 def init_db():
+    """Create tables if they don't exist. Called at startup regardless of how app is launched."""
     with engine.connect() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS expenses (
@@ -61,12 +62,21 @@ def save_setting(key, value):
 def index():
     with get_db() as conn:
         expenses = conn.execute(text("SELECT * FROM expenses ORDER BY date DESC")).fetchall()
-        summary = conn.execute(text("""
-            SELECT strftime('%Y-%m', date) as month, category, SUM(amount) as total
-            FROM expenses
-            GROUP BY month, category
-            ORDER BY month DESC
-        """)).fetchall()
+        # Use different date formatting for PostgreSQL vs SQLite
+        if "postgresql" in DATABASE_URL:
+            summary = conn.execute(text("""
+                SELECT to_char(date::date, 'YYYY-MM') as month, category, SUM(amount) as total
+                FROM expenses
+                GROUP BY month, category
+                ORDER BY month DESC
+            """)).fetchall()
+        else:
+            summary = conn.execute(text("""
+                SELECT strftime('%Y-%m', date) as month, category, SUM(amount) as total
+                FROM expenses
+                GROUP BY month, category
+                ORDER BY month DESC
+            """)).fetchall()
     ai_configured = bool(get_setting("api_key"))
     now = datetime.today().strftime("%Y-%m-%d")
     return render_template("index.html", expenses=expenses, summary=summary,
@@ -157,6 +167,8 @@ def settings():
                            masked_key=masked_key, has_key=bool(raw_key))
 
 
+# Always initialize DB on startup — works with both gunicorn and direct python run
+init_db()
+
 if __name__ == "__main__":
-    init_db()
     app.run(debug=True)
