@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
+        h1, h2 { color: #333; }
+        form { background: white; padding: 20px; border-radius: 8px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input, select { padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #45a049; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th { background: #4CAF50; color: white; padding: 12px; text-align: left; }
+        td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+        tr:hover { background: #f9f9f9; }
+        .delete { color: red; text-decoration: none; font-weight: bold; }
+        .delete:hover { text-decoration: underline; }
+        .summary { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; }
+        .summary-card { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); min-width: 150px; }
+        .summary-card h4 { margin: 0 0 5px; color: #666; font-size: 12px; text-transform: uppercase; }
+        .summary-card p { margin: 0; font-size: 20px; font-weight: bold; color: #333; }
+    </style>
+</head>
+<body>
+
+    <h1>💰 Expense Tracker</h1>
+
+    <!-- Add Expense Form -->
+    <h2>Add Expense</h2>
+    <form action="/add" method="POST">
+        <input type="date" name="date" required value="{{ today }}">
+        <select name="category" required>
+            <option value="">-- Category --</option>
+            <option>Food</option>
+            <option>Transport</option>
+            <option>Shopping</option>
+            <option>Entertainment</option>
+            <option>Health</option>
+            <option>Utilities</option>
+            <option>Other</option>
+        </select>
+        <input type="text" name="description" placeholder="Description">
+        <input type="number" name="amount" placeholder="Amount ($)" step="0.01" min="0" required>
+        <button type="submit">Add</button>
+    </form>
+
+    <!-- Monthly Summary -->
+    {% if summary %}
+    <h2>Monthly Summary</h2>
+    <div class="summary">
+        {% for row in summary %}
+        <div class="summary-card">
+            <h4>{{ row.month }} · {{ row.category }}</h4>
+            <p>${{ "%.2f"|format(row.total) }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Expenses Table -->
+    <h2>All Expenses</h2>
+    {% if expenses %}
+    <table>
+        <tr>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th>Action</th>
+        </tr>
+        {% for e in expenses %}
+        <tr>
+            <td>{{ e.date }}</td>
+            <td>{{ e.category }}</td>
+            <td>{{ e.description }}</td>
+            <td>${{ "%.2f"|format(e.amount) }}</td>
+            <td><a class="delete" href="/delete/{{ e.id }}">Delete</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No expenses yet. Add your first one above!</p>
+    {% endif %}
+
+</body>
+</html>
